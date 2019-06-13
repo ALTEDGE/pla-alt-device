@@ -127,7 +127,7 @@ void setup() {
   joy.setZAxisRange(0, JOY_LIMIT);
   joy.setRzAxisRange(0, JOY_LIMIT);
   
-  joy.setThrottleRange(25, JOY_LIMIT); // Wheel
+  joy.setThrottleRange(0, JOY_LIMIT); // Wheel
 
   // Begin functioning as a controller
   joy.begin();
@@ -193,6 +193,19 @@ void loop() {
     }
   }
 
+  static int wheelPosition = JOY_LIMIT / 2;
+  static int lastPos = analogRead(6);
+
+  int pos = analogRead(6);
+  int diff = pos - lastPos;
+  if (diff > 700)
+    diff -= 1000;
+  else if (diff < -700)
+    diff += 1000;
+  wheelPosition = max(min(wheelPosition + diff, JOY_LIMIT), 0);
+  lastPos = pos;
+  joy.setThrottle(wheelPosition);
+
   // Update analog values
   joy.setXAxis(analogRead(2));        // center joystick
   joy.setYAxis(analogRead(3));
@@ -200,7 +213,6 @@ void loop() {
   joy.setRyAxis(analogRead(1));
   joy.setZAxis(analogRead(4));  // right joystick
   joy.setRzAxis(analogRead(5));
-  joy.setThrottle(analogRead(6));     // potentiometer
 
   // Update digital values
   joy.setButton(0, !digitalRead(7));   // left joystick button
