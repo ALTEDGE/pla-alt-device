@@ -33,7 +33,7 @@ private:
 	static const int buttons[8];
 
 	// If true, light LED corresponding to PG key. If false, no LEDs.
-	static bool lightsEnabled;
+	static bool trackingPG;
 	// Tracks last pressed PG key, for light control.
 	static unsigned int lastPressed;
 
@@ -43,12 +43,25 @@ public:
 	 */
 	static void begin(void) {
 		io.begin(0x3E);
-		io.clock();
 
-		for (int i = 0; i < 16; i++) {
-			io.pinMode(i, (i & 4) ? OUTPUT : INPUT_PULLUP);
-			if (i & 4)
-				io.digitalWrite(i, true);
+		// Button initialization
+		for (int i = 0; i < 8; i++)
+			io.pinMode(buttons[i], INPUT_PULLUP);
+
+		if (trackingPG) {
+			for (int i = 0; i < 8; i++) {
+				io.pinMode(leds[i], OUTPUT);
+				setLed(i, false);
+			}
+			setLed(lastPressed, true);
+		} else {
+			io.clock(INTERNAL_CLOCK_2MHZ, 3);
+			io.writeByte(REG_OPEN_DRAIN_A, 0xF0);
+			io.writeByte(REG_OPEN_DRAIN_B, 0xF0);
+			for (int i = 0; i < 8; i++) {
+				io.ledDriverInit(leds[i]);
+				io.breathe(leds[i], 750, 250, 2000, 2000);
+			}
 		}
 	}
 
@@ -56,11 +69,14 @@ public:
 	 * Enables or disables lighting LEDs according to the current PG.
 	 * @param enable True to enable LEDs
 	 */
-	static void enableLights(bool enable) {
-		lightsEnabled = enable;
-		setLed(lastPressed, false);
-		lastPressed = enable ? 0 : 8;
-		setLed(lastPressed, true);
+	static void trackPG(bool enable) {
+		trackingPG = enable;
+		io.reset(true);
+		begin();
+	}
+
+	static bool isTrackingPG(void) {
+		return trackingPG;
 	}
 
 	/**
@@ -68,9 +84,9 @@ public:
 	 * @param n Index of the LED, 0-7
 	 * @param state_ True to turn on the LED, false for off
 	 */
-	static void setLed(unsigned int n, bool state_) {
+	static void setLed(unsigned int n, bool state) {
 		if (n < 8)
-			io.digitalWrite(leds[n], !state_);
+			io.digitalWrite(leds[n], !state);
 	}
 
 	/**
@@ -82,7 +98,7 @@ public:
 		if (n < 8) {
 			bool state = !io.digitalRead(buttons[n]);
 			// Update LEDs if a new PG button is pressed
-			if (lightsEnabled && lastPressed != n && state) {
+			if (trackingPG && lastPressed != n && state) {
 				setLed(lastPressed, false);
 				setLed(n, true);
 				lastPressed = n;
@@ -97,14 +113,14 @@ public:
 	 * Runs an LED sequence, so that the user can check for faulty LEDs.
 	 */
 	static void testLeds(void) {
-		for (int i = 0; i < 8; i++) {
-			setLed(i, true);
-			delay(75);
-		}
-		for (int i = 0; i < 8; i++) {
-			setLed(i, false);
-			delay(75);
-		}
+		//for (unsigned int i = 0; i < 8; i++) {
+		//	setLed(i, true);
+		//	delay(75);
+		//}
+		//for (unsigned int i = 0; i < 8; i++) {
+		//	setLed(i, false);
+		//	delay(75);
+		//}
 	}
 };
 
@@ -186,7 +202,7 @@ void setup() {
 	joy.begin();
 #endif
 
-	RgbLed::setAll(0x202020);
+	RgbLed::setAll(0x00FF00);
 	PgButtons::testLeds();
 }
 
@@ -253,11 +269,12 @@ void handleSerial(void)
 		break;
 	// Enable PG lights
 	case 'e':
-		PgButtons::enableLights(true);
+		PgButtons::trackPG(true);
 		break;
 	// Disable PG lights
 	case 'd':
-		PgButtons::enableLights(false);
+		PgButtons::trackPG(false);
+		RgbLed::setAll(0x00FF00);
 		break;
 	// Identification
 	case 'i':
@@ -284,8 +301,8 @@ const int PgButtons::leds[8] = {
 const int PgButtons::buttons[8] = {
 	0, 1, 2, 3, 8, 9, 11, 10
 };
-bool PgButtons::lightsEnabled = false;
-unsigned int PgButtons::lastPressed = 8;
+bool PgButtons::trackingPG = false;
+unsigned int PgButtons::lastPressed = 0;
 
 #else
 
