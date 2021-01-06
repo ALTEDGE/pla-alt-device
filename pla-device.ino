@@ -82,7 +82,7 @@ public:
 	/**
 	 * Sets the state of the given LED.
 	 * @param n Index of the LED, 0-7
-	 * @param state_ True to turn on the LED, false for off
+	 * @param state True to turn on the LED, false for off
 	 */
 	static void setLed(unsigned int n, bool state) {
 		if (n < 8)
@@ -113,14 +113,14 @@ public:
 	 * Runs an LED sequence, so that the user can check for faulty LEDs.
 	 */
 	static void testLeds(void) {
-		//for (unsigned int i = 0; i < 8; i++) {
-		//	setLed(i, true);
-		//	delay(75);
-		//}
-		//for (unsigned int i = 0; i < 8; i++) {
-		//	setLed(i, false);
-		//	delay(75);
-		//}
+        for (int i = 0; i < 5; i++) {
+            for (int j = 0; j < 8; j++)
+                setLed(j, true);
+            delay(50);
+            for (int j = 0; j < 8; j++)
+                setLed(j, false);
+            delay(50);
+        }
 	}
 };
 
@@ -178,6 +178,7 @@ public:
 /**
  * Arduino setup and initialization.
  */
+static void enterTestMode();
 void setup() {
 	Serial.begin(9600);
 	RgbLed::begin();
@@ -202,8 +203,13 @@ void setup() {
 	joy.begin();
 #endif
 
+    if (!digitalRead(6)) {
+      PgButtons::trackPG(true);
+	    PgButtons::testLeds();
+      enterTestMode();
+    }
+
 	RgbLed::setAll(0x00FF00);
-	PgButtons::testLeds();
 }
 
 #ifndef DEBUG
@@ -223,7 +229,7 @@ void loop() {
 	joy.setYAxis(analogRead(3));
 	joy.setRxAxis(analogRead(0)); // Left joystick
 	joy.setRyAxis(analogRead(1));
-	joy.setZAxis(1000 - analogRead(4));  // Right joystick
+	joy.setZAxis(1000 - analogRead(4));  // Right joystick (actually primary?)
 	joy.setRzAxis(1000 - analogRead(5));
 
 	// Update wheel position
@@ -238,6 +244,57 @@ void loop() {
 
 	// Have some delay between updates (could be made shorter?)
 	delay(20);
+}
+
+void enterTestMode()
+{   
+    while (1) {
+        auto joyToColor = [](int joy, unsigned long int colorl, unsigned long int colorr) {
+            bool neg = joy < 512;
+            joy = neg ? 512 - joy : joy - 512;
+            unsigned long int mask = 0;
+            if (joy > 50) {
+                mask = (joy / 2) & 0xFF;
+                mask |= (mask << 8) | (mask << 16);
+                mask = (neg ? colorl : colorr) & mask;
+            }
+            return mask;
+        };
+        unsigned long int mask = 0;
+        
+        // Left        
+        if (!digitalRead(5)) {
+            mask = 0xFFFFFF;
+        } else {
+            mask = joyToColor(analogRead(0), 0xFFFF00, 0x00FF00) | joyToColor(analogRead(1), 0x0000FF, 0xFF0000);
+        }
+        RgbLed::set(2, mask);
+        RgbLed::set(3, mask);
+        // Primary
+        if (!digitalRead(6)) {
+            mask = 0xFFFFFF;
+        } else {
+            mask = joyToColor(analogRead(2), 0xFFFF00, 0x00FF00) |
+                   joyToColor(analogRead(3), 0x0000FF, 0xFF0000) |
+                   joyToColor(analogRead(6), 0xFF00FF, 0x00FFFF);
+        }
+        RgbLed::set(4, mask);
+        RgbLed::set(5, mask);
+        // Right
+        if (!digitalRead(7)) {
+            mask = 0xFFFFFF;
+        } else {
+            mask = joyToColor(1024 - analogRead(4), 0xFFFF00, 0x00FF00) |
+                   joyToColor(1024 - analogRead(5), 0x0000FF, 0xFF0000);
+        }
+        RgbLed::set(0, mask);
+        RgbLed::set(1, mask);
+        
+        for (unsigned int i = 0; i < 8; i++)
+          PgButtons::read(i);
+
+        delay(100);
+    }
 }
 
 void handleSerial(void)
