@@ -8,7 +8,11 @@
 
 // The maximum range of a joystick axis
 // Prototype limit: 675
-#define JOY_LIMIT (1000)
+//#define JOY_LIMIT (1000)
+#define JOY_RANGELOW  (512 - 250)
+#define JOY_RANGEHIGH (512 + 250)
+#define WHL_RANGELOW  (512 - 90)
+#define WHL_RANGEHIGH (512 + 90)
 
 // Creates the joystick object 
 Joystick_ joy (JOYSTICK_DEFAULT_REPORT_ID, JOYSTICK_TYPE_JOYSTICK,
@@ -180,28 +184,28 @@ public:
  */
 static void enterTestMode();
 void setup() {
-    Serial.begin(9600);
-    RgbLed::begin();
-    PgButtons::begin();
+    Serial.begin(115200);
 
     // Set joystick buttons to inputs
     pinMode(5, INPUT_PULLUP);
-     pinMode(6, INPUT_PULLUP);
+    pinMode(6, INPUT_PULLUP);
     pinMode(7, INPUT_PULLUP);
 
     // Set analog ranges for the joysticks and potentiometer
 #ifndef DEBUG
-    joy.setXAxisRange(230, 750);
-    joy.setYAxisRange(230, 750);
-    joy.setRxAxisRange(230, 750);
-    joy.setRyAxisRange(230, 750);
-    joy.setZAxisRange(230, 750);
-    joy.setRzAxisRange(230, 750);
-    joy.setThrottleRange(430, 600); // Wheel
+    RgbLed::begin();
+    PgButtons::begin();
+    
+    joy.setXAxisRange(JOY_RANGELOW, JOY_RANGEHIGH);
+    joy.setYAxisRange(JOY_RANGELOW, JOY_RANGEHIGH);
+    joy.setRxAxisRange(JOY_RANGELOW, JOY_RANGEHIGH);
+    joy.setRyAxisRange(JOY_RANGELOW, JOY_RANGEHIGH);
+    joy.setZAxisRange(JOY_RANGELOW, JOY_RANGEHIGH);
+    joy.setRzAxisRange(JOY_RANGELOW, JOY_RANGEHIGH);
+    joy.setThrottleRange(WHL_RANGELOW, WHL_RANGEHIGH); // Wheel
 
     // Begin functioning as a controller
     joy.begin();
-#endif
 
     if (!digitalRead(6)) {
         PgButtons::trackPG(true);
@@ -210,7 +214,28 @@ void setup() {
     }
 
     RgbLed::setAll(0x00FF00);
+#endif
 }
+
+
+Lp55231 RgbLed::rgb[2] = {
+    Lp55231(0x32), Lp55231(0x33)
+};
+const char RgbLed::channel[9] = {
+    6, 0, 1, // R, G, B
+    7, 2, 3,
+    8, 4, 5,
+};
+
+SX1509 PgButtons::io;
+const int PgButtons::leds[8] = {
+    6, 7, 12, 13, 14, 15, 4, 5
+};
+const int PgButtons::buttons[8] = {
+    0, 1, 2, 3, 8, 9, 11, 10
+};
+bool PgButtons::trackingPG = false;
+unsigned int PgButtons::lastPressed = 0;
 
 #ifndef DEBUG
 
@@ -335,55 +360,29 @@ void handleSerial(void)
     }
 }
 
-Lp55231 RgbLed::rgb[2] = {
-    Lp55231(0x32), Lp55231(0x33)
-};
-const char RgbLed::channel[9] = {
-    6, 0, 1, // R, G, B
-    7, 2, 3,
-    8, 4, 5,
-};
-
-SX1509 PgButtons::io;
-const int PgButtons::leds[8] = {
-    6, 7, 12, 13, 14, 15, 4, 5
-};
-const int PgButtons::buttons[8] = {
-    0, 1, 2, 3, 8, 9, 11, 10
-};
-bool PgButtons::trackingPG = false;
-unsigned int PgButtons::lastPressed = 0;
-
 #else
 
 // Debug loop
 void loop() {
-    char dump[100];
-    char buffer[10];
-
-    // Reset dump buffer; append joystick states
-    dump[0] = '\0';
     for (int i = 0; i < 7; i++) {
-        snprintf(10, buffer, "%5d ", analogRead(i));
-        strcat(dump, buffer);
+        Serial.print(analogRead(i));
+        Serial.print(", ");
     }
 
     // Append joystick button states
     for (int i = 5; i < 8; i++) {
-        snprintf(10, buffer, "%1d ", !digitalRead(i));
-        strcat(dump, buffer);
+        Serial.print(!digitalRead(i));
+        Serial.print(", ");
     }
 
     // Append PG button states
     for (int i = 0; i < 8; i++) {
-        snprintf(10, buffer, "%1d ", PgButtons::read(i));
-        strcat(dump, buffer);
+        Serial.print(PgButtons::read(i));
+        Serial.print(", ");
     }
 
-    // Dump
-    Serial.println(dump);
-    delay(1500);
+    Serial.println();
+    delay(1000);
 }
 
 #endif // DEBUG
-
