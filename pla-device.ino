@@ -3,24 +3,31 @@
 #include "SparkFunSX1509.h"
 #include "util/sx1509_registers.h"
 
-// Uncomment to swap loop for serial dump of inputs.
+// Uncomment to swap loop for serial dump of inputs
 //#define DEBUG
 
-// The maximum range of a joystick axis
-// Prototype limit: 675
-//#define JOY_LIMIT (1000)
+// Default controller color
+#define COLOR_DEFAULT (0x03F7FF)
+
+// Number of milliseconds between updating state
+#define JOY_TIMEDELTA (10)
+
+// Joystick and wheel range definitions
 #define JOY_RANGELOW  (512 - 250)
 #define JOY_RANGEHIGH (512 + 250)
-#define WHL_RANGELOW  (512 - 90)
-#define WHL_RANGEHIGH (512 + 90)
+#define WHL_RANGE     (80)
+#define WHL_RANGELOW  (512 - 80)
+#define WHL_RANGEHIGH (512 + 80)
+#define WHL_THRESHOLD (10)
 
 // Creates the joystick object 
-Joystick_ joy (JOYSTICK_DEFAULT_REPORT_ID, JOYSTICK_TYPE_JOYSTICK,
+static Joystick_ joy (JOYSTICK_DEFAULT_REPORT_ID, JOYSTICK_TYPE_JOYSTICK,
     11, 0,                // Button count, hat switch count
     true, true, true,     // X/Y/Z axis
     true, true, true,     // Rx/Ry/Rz axis
     false, true,          // Rudder, throttle (used for wheel)
     false, false, false); // Accelerator, brake, steering
+static int wheelCenter = -1;
 
 /**
  * @class PgButtons
@@ -184,6 +191,9 @@ public:
  */
 static void enterTestMode();
 void setup() {
+    // Enable entering sleep mode
+    SMCR = 1;
+
     Serial.begin(115200);
 
     // Set joystick buttons to inputs
@@ -204,6 +214,14 @@ void setup() {
     joy.setRzAxisRange(JOY_RANGELOW, JOY_RANGEHIGH);
     joy.setThrottleRange(WHL_RANGELOW, WHL_RANGEHIGH); // Wheel
 
+    // Calibrate the wheel
+    wheelCenter = 0;
+    for (int i = 0; i < 8; ++i) {
+        wheelCenter += analogRead(6);
+        delay(1);
+    }
+    wheelCenter = wheelCenter / 8 - 512;
+
     // Begin functioning as a controller
     joy.begin();
 
@@ -213,7 +231,7 @@ void setup() {
         enterTestMode();
     }
 
-    RgbLed::setAll(0x00FF00);
+    RgbLed::setAll(COLOR_DEFAULT);
 #endif
 }
 
@@ -245,6 +263,8 @@ static void handleSerial(void);
  * Main loop of the controller program.
  */
 void loop() {
+    unsigned long updateTimeTarget = millis() + JOY_TIMEDELTA;
+
     // Check for serial request from computer
     if (Serial.available() > 0)
         handleSerial();
@@ -258,7 +278,10 @@ void loop() {
     joy.setRzAxis(1000 - analogRead(5));
 
     // Update wheel position
-    joy.setThrottle(analogRead(6));
+    int wheel = analogRead(6) - wheelCenter;
+    if (wheel < 512 + WHL_THRESHOLD && wheel > 512 - WHL_THRESHOLD)
+      wheel = 512;
+    joy.setThrottle(wheel);
 
     // Update digital values
     joy.setButton(0, !digitalRead(7));   // left joystick button
@@ -267,8 +290,9 @@ void loop() {
     for (unsigned int i = 0; i < 8; i++)
         joy.setButton(3 + i, PgButtons::read(i));
 
-    // Have some delay between updates (could be made shorter?)
-    delay(20);
+    // Sleep if we have extra time
+    while (millis() < updateTimeTarget)
+        asm("sleep");
 }
 
 void enterTestMode()
@@ -294,7 +318,8 @@ void enterTestMode()
         if (!digitalRead(5)) {
             mask = 0xFFFFFF;
         } else {
-            mask = joyToColor(analogRead(0), 0xFFFF00, 0x00FF00) | joyToColor(analogRead(1), 0x0000FF, 0xFF0000);
+            mask = joyToColor(analogRead(0), 0xFFFF00, 0x00FF00) |
+                   joyToColor(analogRead(1), 0x0000FF, 0xFF0000);
         }
         RgbLed::set(2, mask);
         RgbLed::set(3, mask);
@@ -327,20 +352,21 @@ void enterTestMode()
 
 void handleSerial(void)
 {
-    unsigned int timeout = 500;
-    unsigned long color;
-
     switch (Serial.read()) {
     // Change color
     case 'c':
-        for (; Serial.available() < 3 && timeout > 0; timeout--)
-            delay(1);
-        if (timeout == 0)
-            break;
-        color = (((unsigned long)Serial.read() & 0xFF) << 16) |
-                ((Serial.read() & 0xFF) << 8) |
-                (Serial.read() & 0xFF);
-        RgbLed::setAll(color);
+        {
+            unsigned int timeout = 500;
+            unsigned long color;
+            for (; Serial.available() < 3 && timeout > 0; --timeout)
+                delay(1);
+            if (timeout == 0)
+                break;
+            color = (Serial.read() & 0xFF) << 16;
+            color |= (Serial.read() & 0xFF) << 8;
+            color |= Serial.read() & 0xFF;
+            RgbLed::setAll(color);
+        }
         break;
     // Enable PG lights
     case 'e':
@@ -349,7 +375,7 @@ void handleSerial(void)
     // Disable PG lights
     case 'd':
         PgButtons::trackPG(false);
-        RgbLed::setAll(0x00FF00);
+        RgbLed::setAll(COLOR_DEFAULT);
         break;
     // Identification
     case 'i':
