@@ -12,6 +12,8 @@
 // Number of milliseconds between updating state
 #define JOY_TIMEDELTA (10)
 
+#define JOY_CALIB_COUNT (8)
+
 // Joystick and wheel range definitions
 #define JOY_RANGELOW  (512 - 250)
 #define JOY_RANGEHIGH (512 + 250)
@@ -187,6 +189,14 @@ public:
 };
 
 /**
+ * Calibration offsets for all of the joysticks and wheel.
+ * Array index corresponds to the analog pin index.
+ */
+static int joyCalibrations[7] = {
+    0, 0, 0, 0, 0, 0, 0
+};
+
+/**
  * Arduino setup and initialization.
  */
 static void enterTestMode();
@@ -212,15 +222,16 @@ void setup() {
     joy.setRyAxisRange(JOY_RANGELOW, JOY_RANGEHIGH);
     joy.setZAxisRange(JOY_RANGELOW, JOY_RANGEHIGH);
     joy.setRzAxisRange(JOY_RANGELOW, JOY_RANGEHIGH);
-    joy.setThrottleRange(WHL_RANGELOW, WHL_RANGEHIGH); // Wheel
+    joy.setThrottleRange(WHL_RANGELOW, WHL_RANGEHIGH);
 
-    // Calibrate the wheel
-    wheelCenter = 0;
-    for (int i = 0; i < 8; ++i) {
-        wheelCenter += analogRead(6);
+    // Calibrate the joysticks and wheel
+    for (int i = 0; i < JOY_CALIB_COUNT; ++i) {
+        for (int j = 0; j < 7; ++j)
+            joyCalibrations[j] += analogRead(j);
         delay(1);
     }
-    wheelCenter = wheelCenter / 8 - 512;
+    for (int i = 0; i < 7; ++i)
+        joyCalibrations[i] = joyCalibrations[i] / JOY_CALIB_COUNT - 512;
 
     // Begin functioning as a controller
     joy.begin();
@@ -270,15 +281,15 @@ void loop() {
         handleSerial();
 
     // Update analog values
-    joy.setXAxis(analogRead(2));  // Primary joystick
-    joy.setYAxis(analogRead(3));
-    joy.setRxAxis(analogRead(0)); // Left joystick
-    joy.setRyAxis(analogRead(1));
-    joy.setZAxis(1000 - analogRead(4));  // Right joystick (actually primary?)
-    joy.setRzAxis(1000 - analogRead(5));
+    joy.setRxAxis(analogRead(0) - joyCalibrations[0]); // Left joystick
+    joy.setRyAxis(analogRead(1) - joyCalibrations[1]);
+    joy.setXAxis(analogRead(2) - joyCalibrations[2]);  // Primary joystick
+    joy.setYAxis(analogRead(3) - joyCalibrations[3]);
+    joy.setZAxis(1023 - analogRead(4) + joyCalibrations[4]);  // Right joystick
+    joy.setRzAxis(1023 - analogRead(5) + joyCalibrations[5]);
 
-    // Update wheel position
-    int wheel = analogRead(6) - wheelCenter;
+    // Update wheel position with threshold/dead-zone
+    int wheel = analogRead(6) - joyCalibrations[6];
     if (wheel < 512 + WHL_THRESHOLD && wheel > 512 - WHL_THRESHOLD)
       wheel = 512;
     joy.setThrottle(wheel);
@@ -412,4 +423,3 @@ void loop() {
 }
 
 #endif // DEBUG
-

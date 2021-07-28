@@ -4,3 +4,4 @@ caterina/LUFA-111009
 *.d
 *.hex
 *.elf
+*.eep
