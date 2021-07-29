@@ -1,7 +1,5 @@
-dev
-caterina/LUFA-111009
+hardware/pla/avr/bootloaders/caterina/LUFA-111009
 *.o
 *.d
-*.hex
 *.elf
 *.eep

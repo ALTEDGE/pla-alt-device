@@ -1,0 +1,31 @@
+menu.cpu=Processor
+
+plaalt.name=PLA ALT
+
+plaalt.upload.tool=avrdude
+plaalt.upload.protocol=avr109
+plaalt.upload.maximum_size=28672
+plaalt.upload.maximum_data_size=2560
+plaalt.upload.speed=57600
+plaalt.upload.disable_flushing=true
+plaalt.upload.use_1200bps_touch=true
+plaalt.upload.wait_for_upload_port=false
+
+plaalt.bootloader.tool=avrdude
+plaalt.bootloader.unlock_bits=0x3F
+plaalt.bootloader.lock_bits=0x2F
+plaalt.bootloader.low_fuses=0xFF
+plaalt.bootloader.high_fuses=0xD8
+plaalt.bootloader.extended_fuses=0xFE
+plaalt.bootloader.file=caterina/Caterina.hex
+
+plaalt.build.board=AVR_PROMICRO
+plaalt.build.core=arduino:arduino
+plaalt.build.variant=plaalt
+plaalt.build.mcu=atmega32u4
+plaalt.build.f_cpu=8000000L
+plaalt.build.usb_product="SparkFun Pro Micro (PLA ALT)"
+plaalt.build.vid=0x1b4f
+plaalt.build.pid=0x9204
+plaalt.build.extra_flags={build.usb_flags}
+
