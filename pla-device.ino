@@ -3,6 +3,8 @@
 #include "SparkFunSX1509.h"
 #include "util/sx1509_registers.h"
 
+#include <EEPROM.h>
+
 // Uncomment to swap loop for serial dump of inputs
 //#define DEBUG
 
@@ -225,13 +227,42 @@ void setup() {
     joy.setThrottleRange(WHL_RANGELOW, WHL_RANGEHIGH);
 
     // Calibrate the joysticks and wheel
-    for (int i = 0; i < JOY_CALIB_COUNT; ++i) {
-        for (int j = 0; j < 7; ++j)
-            joyCalibrations[j] += analogRead(j);
-        delay(1);
+    {
+        // Address 0-4 is reserved for calibration ID.
+        // Starting at 4 will be the calibration data, seven 'int's.
+        bool validCalib = EEPROM.read(0) == 'P' &&
+                          EEPROM.read(1) == 'L' &&
+                          EEPROM.read(2) == 'A';
+        if (!validCalib || !digitalRead(5)) {
+            if (validCalib) {
+                RgbLed::setAll(0xFFFFFF);
+                delay(2500);
+            }
+
+            for (int i = 0; i < JOY_CALIB_COUNT; ++i) {
+                for (int j = 0; j < 7; ++j)
+                    joyCalibrations[j] += analogRead(j);
+                delay(1);
+            }
+
+            int addr = 4;
+            for (int i = 0; i < 7; ++i) {
+                joyCalibrations[i] = joyCalibrations[i] / JOY_CALIB_COUNT - 512;
+                EEPROM.put(addr, joyCalibrations[i]);
+                addr += sizeof(joyCalibrations[i]);
+            }
+
+            EEPROM.update(0, 'P');
+            EEPROM.update(1, 'L');
+            EEPROM.update(2, 'A');
+        } else {
+            int addr = 4;
+            for (int i = 0; i < 7; ++i) {
+                EEPROM.get(addr, joyCalibrations[i]);
+                addr += sizeof(joyCalibrations[i]);
+            }
+        }
     }
-    for (int i = 0; i < 7; ++i)
-        joyCalibrations[i] = joyCalibrations[i] / JOY_CALIB_COUNT - 512;
 
     // Begin functioning as a controller
     joy.begin();
@@ -295,9 +326,9 @@ void loop() {
     joy.setThrottle(wheel);
 
     // Update digital values
-    joy.setButton(0, !digitalRead(7));   // left joystick button
+    joy.setButton(0, !digitalRead(7));   // right joystick button
     joy.setButton(1, !digitalRead(6));   // center button
-    joy.setButton(2, !digitalRead(5));   // right button
+    joy.setButton(2, !digitalRead(5));   // left button
     for (unsigned int i = 0; i < 8; i++)
         joy.setButton(3 + i, PgButtons::read(i));
 
