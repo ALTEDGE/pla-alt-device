@@ -124,6 +124,10 @@ public:
         }
     }
 
+    static int getPg() {
+      return lastPressed;
+    }
+
     /**
      * Runs an LED sequence, so that the user can check for faulty LEDs.
      */
@@ -410,6 +414,10 @@ void handleSerial(void)
             RgbLed::setAll(color);
         }
         break;
+    // Synchronize PG
+    case 'p':
+        Serial.print((char)PgButtons::getPg());
+        break;
     // Enable PG lights
     case 'e':
         PgButtons::trackPG(true);
@@ -421,7 +429,7 @@ void handleSerial(void)
         break;
     // Identification
     case 'i':
-        Serial.println("PLA");
+        Serial.print("PLA");
         break;
     default:
         break;
