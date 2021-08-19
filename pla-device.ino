@@ -31,7 +31,6 @@ static Joystick_ joy (JOYSTICK_DEFAULT_REPORT_ID, JOYSTICK_TYPE_JOYSTICK,
     true, true, true,     // Rx/Ry/Rz axis
     false, true,          // Rudder, throttle (used for wheel)
     false, false, false); // Accelerator, brake, steering
-static int wheelCenter = -1;
 
 /**
  * @class PgButtons
@@ -269,7 +268,7 @@ void setup() {
     }
 
     // Begin functioning as a controller
-    joy.begin();
+    joy.begin(false); // NO AUTO SEND STATE!
 
     if (!digitalRead(6)) {
         PgButtons::trackPG(true);
@@ -335,6 +334,8 @@ void loop() {
     joy.setButton(2, !digitalRead(5));   // left button
     for (unsigned int i = 0; i < 8; i++)
         joy.setButton(3 + i, PgButtons::read(i));
+
+    joy.sendState();
 
     // Sleep if we have extra time
     while (millis() < updateTimeTarget)
@@ -408,9 +409,12 @@ void handleSerial(void)
                 delay(1);
             if (timeout == 0)
                 break;
-            color = (Serial.read() & 0xFF) << 16;
-            color |= (Serial.read() & 0xFF) << 8;
-            color |= Serial.read() & 0xFF;
+            unsigned long b = Serial.read();
+            color = (b & 0xFF) << 16;
+            b = Serial.read();
+            color |= (b & 0xFF) << 8;
+            b = Serial.read();
+            color |= b & 0xFF;
             RgbLed::setAll(color);
         }
         break;
