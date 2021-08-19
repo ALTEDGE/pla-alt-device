@@ -19,10 +19,10 @@
 // Joystick and wheel range definitions
 #define JOY_RANGELOW  (512 - 250)
 #define JOY_RANGEHIGH (512 + 250)
-#define WHL_RANGE     (80)
-#define WHL_RANGELOW  (512 - 80)
-#define WHL_RANGEHIGH (512 + 80)
-#define WHL_THRESHOLD (10)
+#define WHL_RANGE     (75)
+#define WHL_RANGELOW  (512 - WHL_RANGE)
+#define WHL_RANGEHIGH (512 + WHL_RANGE)
+#define WHL_THRESHOLD (20)
 
 // Creates the joystick object 
 static Joystick_ joy (JOYSTICK_DEFAULT_REPORT_ID, JOYSTICK_TYPE_JOYSTICK,
@@ -322,11 +322,24 @@ void loop() {
     joy.setZAxis(1023 - analogRead(4) + joyCalibrations[4]);  // Right joystick
     joy.setRzAxis(1023 - analogRead(5) + joyCalibrations[5]);
 
-    // Update wheel position with threshold/dead-zone
-    int wheel = analogRead(6) - joyCalibrations[6];
+    // Update wheel position:
+    // - Take 3x oversample for current position
+    // - Calibrate and apply dead-zone
+    // - Average with past three positions
+    static int wheelPrev[3] = { 512, 512, 512 };
+    int wheel = ((analogRead(6) + analogRead(6) + analogRead(6)) / 3) - joyCalibrations[6];
     if (wheel < 512 + WHL_THRESHOLD && wheel > 512 - WHL_THRESHOLD)
-      wheel = 512;
-    joy.setThrottle(wheel);
+        wheel = 512;
+    else if (wheel > 512)
+        wheel -= WHL_THRESHOLD;
+    else
+        wheel += WHL_THRESHOLD;
+
+    int realWheel = (wheel + wheelPrev[0] + wheelPrev[1] + wheelPrev[2]) / 4;
+    wheelPrev[2] = wheelPrev[1];
+    wheelPrev[1] = wheelPrev[0];
+    wheelPrev[0] = wheel;
+    joy.setThrottle(realWheel);
 
     // Update digital values
     joy.setButton(0, !digitalRead(7));   // right joystick button
