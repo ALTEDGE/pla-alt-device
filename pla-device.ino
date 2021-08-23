@@ -19,10 +19,13 @@
 // Joystick and wheel range definitions
 #define JOY_RANGELOW  (512 - 250)
 #define JOY_RANGEHIGH (512 + 250)
-#define WHL_RANGE     (80)
-#define WHL_RANGELOW  (512 - 80)
-#define WHL_RANGEHIGH (512 + 80)
-#define WHL_THRESHOLD (10)
+
+#define WHL_OVERSAMPLE_COUNT (10)
+#define WHL_RANGE     (76 * WHL_OVERSAMPLE_COUNT)
+#define WHL_CENTER    ((1023 * WHL_OVERSAMPLE_COUNT) / 2)
+#define WHL_RANGELOW  (WHL_CENTER - WHL_RANGE)
+#define WHL_RANGEHIGH (WHL_CENTER + WHL_RANGE)
+#define WHL_THRESHOLD (WHL_RANGE * 21 / 100)
 
 // Creates the joystick object 
 static Joystick_ joy (JOYSTICK_DEFAULT_REPORT_ID, JOYSTICK_TYPE_JOYSTICK,
@@ -322,11 +325,42 @@ void loop() {
     joy.setZAxis(1023 - analogRead(4) + joyCalibrations[4]);  // Right joystick
     joy.setRzAxis(1023 - analogRead(5) + joyCalibrations[5]);
 
-    // Update wheel position with threshold/dead-zone
-    int wheel = analogRead(6) - joyCalibrations[6];
+    // Update wheel position:
+
+    long wheelReading = 0;
+    for (int i = 0; i < WHL_OVERSAMPLE_COUNT; ++i)
+        wheelReading += analogRead(6);
+    wheelReading -= WHL_OVERSAMPLE_COUNT * joyCalibrations[6];
+    if (wheelReading < WHL_CENTER + WHL_THRESHOLD && wheelReading > WHL_CENTER - WHL_THRESHOLD)
+        wheelReading = WHL_CENTER;
+    else if (wheelReading > WHL_CENTER)
+        wheelReading -= WHL_THRESHOLD;
+    else
+        wheelReading += WHL_THRESHOLD;
+
+    static long wheelPrev[3] = {0, 0, 0};
+    long wheelAvg = (wheelReading + wheelPrev[0] + wheelPrev[1] + wheelPrev[2]) / 4;
+    wheelPrev[3] = wheelPrev[2];
+    wheelPrev[2] = wheelPrev[1];
+    wheelPrev[1] = wheelPrev[0];
+    wheelPrev[0] = wheelReading;
+
+    joy.setThrottle(wheelReading);
+
+    /*static int wheelPrev[3] = { 512, 512, 512 };
+    int wheel = ((analogRead(6) + analogRead(6) + analogRead(6)) / 3) - joyCalibrations[6];
     if (wheel < 512 + WHL_THRESHOLD && wheel > 512 - WHL_THRESHOLD)
-      wheel = 512;
-    joy.setThrottle(wheel);
+        wheel = 512;
+    else if (wheel > 512)
+        wheel -= WHL_THRESHOLD;
+    else
+        wheel += WHL_THRESHOLD;
+
+    int realWheel = (wheel + wheelPrev[0] + wheelPrev[1] + wheelPrev[2]) / 4;
+    wheelPrev[2] = wheelPrev[1];
+    wheelPrev[1] = wheelPrev[0];
+    wheelPrev[0] = wheel;
+    joy.setThrottle(realWheel);*/
 
     // Update digital values
     joy.setButton(0, !digitalRead(7));   // right joystick button
