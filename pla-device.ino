@@ -326,11 +326,15 @@ void loop() {
     joy.setRzAxis(1023 - analogRead(5) + joyCalibrations[5]);
 
     // Update wheel position:
-
+    // 1. Oversample
     long wheelReading = 0;
     for (int i = 0; i < WHL_OVERSAMPLE_COUNT; ++i)
         wheelReading += analogRead(6);
+
+    // 2. Calibrate
     wheelReading -= WHL_OVERSAMPLE_COUNT * joyCalibrations[6];
+
+    // 3. Apply dead-zone
     if (wheelReading < WHL_CENTER + WHL_THRESHOLD && wheelReading > WHL_CENTER - WHL_THRESHOLD)
         wheelReading = WHL_CENTER;
     else if (wheelReading > WHL_CENTER)
@@ -338,29 +342,7 @@ void loop() {
     else
         wheelReading += WHL_THRESHOLD;
 
-    static long wheelPrev[3] = {0, 0, 0};
-    long wheelAvg = (wheelReading + wheelPrev[0] + wheelPrev[1] + wheelPrev[2]) / 4;
-    wheelPrev[3] = wheelPrev[2];
-    wheelPrev[2] = wheelPrev[1];
-    wheelPrev[1] = wheelPrev[0];
-    wheelPrev[0] = wheelReading;
-
     joy.setThrottle(wheelReading);
-
-    /*static int wheelPrev[3] = { 512, 512, 512 };
-    int wheel = ((analogRead(6) + analogRead(6) + analogRead(6)) / 3) - joyCalibrations[6];
-    if (wheel < 512 + WHL_THRESHOLD && wheel > 512 - WHL_THRESHOLD)
-        wheel = 512;
-    else if (wheel > 512)
-        wheel -= WHL_THRESHOLD;
-    else
-        wheel += WHL_THRESHOLD;
-
-    int realWheel = (wheel + wheelPrev[0] + wheelPrev[1] + wheelPrev[2]) / 4;
-    wheelPrev[2] = wheelPrev[1];
-    wheelPrev[1] = wheelPrev[0];
-    wheelPrev[0] = wheel;
-    joy.setThrottle(realWheel);*/
 
     // Update digital values
     joy.setButton(0, !digitalRead(7));   // right joystick button
