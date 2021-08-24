@@ -1,3 +1,21 @@
+/**
+ * pla-device.ino: Firmware code for the PLA ALT Avatar Motion Controller.
+ * Copyright (C) 2021  PLA LABS
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
 #include "Joystick.h"
 #include "lp55231.h"
 #include "SparkFunSX1509.h"
@@ -5,21 +23,25 @@
 
 #include <EEPROM.h>
 
-// Uncomment to swap loop for serial dump of inputs
+// Uncomment to swap loop() for a serial dump of inputs.
 //#define DEBUG
 
-// Default controller color
+// Default controller LED color.
 #define COLOR_DEFAULT (0x03F7FF)
 
-// Number of milliseconds between updating state
+// Number of milliseconds between updating controller state.
 #define JOY_TIMEDELTA (10)
 
+// Number of times to poll joystick zero position for calibration.
 #define JOY_CALIB_COUNT (8)
 
-// Joystick and wheel range definitions
-#define JOY_RANGELOW  (512 - 250)
-#define JOY_RANGEHIGH (512 + 250)
+// Joystick analog range parameters.
+#define JOY_CENTER    (512)
+#define JOY_RANGE     (250)
+#define JOY_RANGELOW  (JOY_CENTER - JOY_RANGE)
+#define JOY_RANGEHIGH (JOY_CENTER + JOY_RANGE)
 
+// Wheel analog range parameters.
 #define WHL_OVERSAMPLE_COUNT (10)
 #define WHL_RANGE     (76 * WHL_OVERSAMPLE_COUNT)
 #define WHL_CENTER    ((1023 * WHL_OVERSAMPLE_COUNT) / 2)
@@ -27,7 +49,6 @@
 #define WHL_RANGEHIGH (WHL_CENTER + WHL_RANGE)
 #define WHL_THRESHOLD (WHL_RANGE * 21 / 100)
 
-// Creates the joystick object 
 static Joystick_ joy (JOYSTICK_DEFAULT_REPORT_ID, JOYSTICK_TYPE_JOYSTICK,
     11, 0,                // Button count, hat switch count
     true, true, true,     // X/Y/Z axis
@@ -41,17 +62,16 @@ static Joystick_ joy (JOYSTICK_DEFAULT_REPORT_ID, JOYSTICK_TYPE_JOYSTICK,
  */
 class PgButtons {
 private:
-    // Object for the IO Expander that controls the buttons and LEDs.
     static SX1509 io;
 
-    // Table to translate a generic index of LEDs to their proper pins.
+    // Maps PG number (0-7) to its LED pin.
     static const int leds[8];
-    // Table to translate generic index of buttons to their proper pins.
+    // Maps PG number to its button pin.
     static const int buttons[8];
 
-    // If true, light LED corresponding to PG key. If false, no LEDs.
+    // If true, light LED corresponding to active PG key.
     static bool trackingPG;
-    // Tracks last pressed PG key, for light control.
+    // Tracks last pressed PG key.
     static unsigned int lastPressed;
 
 public:
@@ -61,7 +81,6 @@ public:
     static void begin(void) {
         io.begin(0x3E);
 
-        // Button initialization
         for (int i = 0; i < 8; i++)
             io.pinMode(buttons[i], INPUT_PULLUP);
 
@@ -72,6 +91,7 @@ public:
             }
             setLed(lastPressed, true);
         } else {
+            // Have LEDs breathe if not in use.
             io.clock(INTERNAL_CLOCK_2MHZ, 3);
             io.writeByte(REG_OPEN_DRAIN_A, 0xF0);
             io.writeByte(REG_OPEN_DRAIN_B, 0xF0);
@@ -90,20 +110,6 @@ public:
         trackingPG = enable;
         io.reset(true);
         begin();
-    }
-
-    static bool isTrackingPG(void) {
-        return trackingPG;
-    }
-
-    /**
-     * Sets the state of the given LED.
-     * @param n Index of the LED, 0-7
-     * @param state True to turn on the LED, false for off
-     */
-    static void setLed(unsigned int n, bool state) {
-        if (n < 8)
-            io.digitalWrite(leds[n], !state);
     }
 
     /**
@@ -126,10 +132,6 @@ public:
         }
     }
 
-    static int getPg() {
-      return lastPressed;
-    }
-
     /**
      * Runs an LED sequence, so that the user can check for faulty LEDs.
      */
@@ -143,6 +145,16 @@ public:
             delay(50);
         }
     }
+
+    static int getPg() {
+      return lastPressed;
+    }
+
+private:
+    static void setLed(unsigned int n, bool state) {
+        if (n < 8)
+            io.digitalWrite(leds[n], !state);
+    }
 };
 
 /**
@@ -154,7 +166,7 @@ private:
     // Object for controlling the RGB LED driver chips.
     static Lp55231 rgb[2];
 
-    // Defines the RGB channels for each LED on the LED chip.
+    // Defines the RGB channels for each LED connected to the LED chip.
     static const char channel[9];
 
 public:
@@ -280,7 +292,7 @@ void setup() {
     }
 
     RgbLed::setAll(COLOR_DEFAULT);
-#endif
+#endif // DEBUG
 }
 
 
@@ -456,7 +468,7 @@ void handleSerial(void)
     }
 }
 
-#else
+#else // DEBUG
 
 // Debug loop
 void loop() {
