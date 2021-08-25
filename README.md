@@ -1,8 +1,10 @@
-# pla-device
+# pla-alt-device
 
-This repository contains the source code for the PLA ALT Avatar Motion Controller.
+This repository contains the source code and hardware design files for the PLA ALT Avatar Motion Controller.
 
 To compile the source code, use the [Arduino IDE](https://www.arduino.cc/en/software). After running the Arduino IDE, an `Arduino` folder is created in your Documents folder. Copy the `hardware` folder in this repo into that `Arudino` folder; then, the Arduino IDE should show "PLA ALT" as a board option.
+
+The controller's hardware was designed using [EAGLE](https://www.autodesk.com/products/eagle/overview). Schematic and board files are located in the `eagle` folder.
 
 ## Brief user guide
 
