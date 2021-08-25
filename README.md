@@ -14,3 +14,7 @@ To reprogram the ALT controller, put it into programming mode by holding down th
 
 The ALT controller self-calibrates when it is first powered on. If recalibration is ever necessary, hold down the left joystick button while plugging into the computer. Release the button once the LEDs light up white. Calibration is finished once the LEDs return to blue.
 
+### Licensing
+
+The ALT controller's source code is licensed under the GNU GPLv3; see the LICENSE file in the top directory. The controller's hardware files (EAGLE schematic and board files) are licensed under the TAPR Open Hardware License; see the LICENSE file in the `eagle` folder.
+
