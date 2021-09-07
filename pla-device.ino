@@ -27,7 +27,8 @@
 //#define DEBUG
 
 // Default controller LED color.
-#define COLOR_DEFAULT (0x03F7FF)
+//#define COLOR_DEFAULT (0x03F7FF)
+#define COLOR_DEFAULT (0x001819)
 
 // Number of milliseconds between updating controller state.
 #define JOY_TIMEDELTA (10)
