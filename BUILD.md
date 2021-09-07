@@ -21,7 +21,7 @@ The Arduino IDE can be downloaded [here](https://www.arduino.cc/en/software). On
 
 ## 3. Download the PLA ALT source code
 
-Download a .zip of the latest source code [here](https://github.com/tcsullivan/pla-device/archive/refs/heads/master.zip). Once downloaded, unzip the archive. If this creates a folder named `pla-device-master`, rename the folder to `pla-device`.
+Download a .zip of the latest source code [here](https://github.com/ALTEDGE/pla-alt-device/archive/refs/heads/master.zip). Once downloaded, unzip the archive. Rename the extracted folder to `pla-device`.
 
 Inside the `pla-device` folder is a `hardware` folder. Copy and paste the `hardware` folder into `Documents\Arduino`.
 
@@ -33,7 +33,7 @@ Now, open the Arduino IDE again. From the menu bar, select **Tools > Board: > PL
 
 Plug the PLA controller into the computer, and connect the programmer to it by pressing it into the programming port on the bottom of the PLA controller (check the pin labels and make sure they line up and match):
 
-![Programmer connection](https://raw.githubusercontent.com/tcsullivan/pla-device/master/doc/usbasp_connection.jpg)
+![Programmer connection](https://raw.githubusercontent.com/ALTEDGE/pla-alt-device/master/doc/usbasp_connection.jpg)
 
 Keep the programmer connected, and choose **Tools > Burn Bootloader** from the menu bar. Once the bootloader burning is finished, you may remove the programmer from the PLA controller.
 
