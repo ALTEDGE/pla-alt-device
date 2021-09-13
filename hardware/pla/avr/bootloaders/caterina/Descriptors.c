@@ -191,32 +191,14 @@ const USB_Descriptor_String_t LanguageString =
  */
 const USB_Descriptor_String_t ProductString =
 {
-	.Header                 = {.Size = USB_STRING_LEN(14), .Type = DTYPE_String},
-
-	#if DEVICE_PID == 0x9209
-	.UnicodeString          = L"WiFlyin'      "
-	#elif DEVICE_PID == 0x9207
-	.UnicodeString          = L"LilyPadUSB    " 
-	#elif DEVICE_PID == 0x9205
-	.UnicodeString          = L"Pro Micro 5V  " 
-	#elif DEVICE_PID == 0x9203
-	.UnicodeString			= L"Pro Micro 3.3V"
-	#elif DEVICE_PID == 0x2B74
-	.UnicodeString			= L"MaKey MaKey   "
-	#else
-	.UnicodeString			= L"USB IO board  "
-	#endif
+	.Header                 = {.Size = USB_STRING_LEN(18), .Type = DTYPE_String},
+	.UnicodeString          = L"PLA ALT Controller"
 };
 
 const USB_Descriptor_String_t ManufNameString = 
 {
-	.Header					= {.Size = USB_STRING_LEN(20), .Type = DTYPE_String},
-	
-	#if DEVICE_VID == 0x1B4F
-	.UnicodeString			= L"SparkFun Electronics"
-	#else
-	.UnicodeString			= L"Unknown             "
-	#endif
+	.Header					= {.Size = USB_STRING_LEN(8), .Type = DTYPE_String},
+	.UnicodeString			= L"PLA LABS"
 };
 
 /** This function is called by the library when in device mode, and must be overridden (see LUFA library "USB Descriptors"
