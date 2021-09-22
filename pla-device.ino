@@ -120,7 +120,7 @@ public:
      */
     static bool read(unsigned int n) {
         if (n < 8) {
-             bool state = !io.digitalRead(buttons[n]);
+            bool state = !io.digitalRead(buttons[n]);
             // Update LEDs if a new PG button is pressed
             if (trackingPG && lastPressed != n && state) {
                 setLed(lastPressed, false);
@@ -130,6 +130,14 @@ public:
             return state;
         } else {
             return false;
+        }
+    }
+
+    static void selectPG(unsigned int n) {
+        if (n < 8) {
+            setLed(lastPressed, false);
+            setLed(n, true);
+            lastPressed = n;
         }
     }
 
@@ -450,6 +458,16 @@ void handleSerial(void)
     // Synchronize PG
     case 'p':
         Serial.print((char)PgButtons::getPg());
+        break;
+    case 'P':
+        {
+            unsigned int timeout = 500;
+            for (; !Serial.available() && timeout > 0; --timeout)
+                delay(1);
+            if (timeout == 0)
+                break;
+        }
+        PgButtons::selectPG(Serial.read());
         break;
     // Enable PG lights
     case 'e':
