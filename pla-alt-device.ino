@@ -173,7 +173,7 @@ private:
 class RgbLed {
 private:
     // Object for controlling the RGB LED driver chips.
-    static Lp55231 rgb[2];
+    static Lp55231 rgb[4];
 
     // Defines the RGB channels for each LED connected to the LED chip.
     static const char channel[9];
@@ -183,7 +183,7 @@ public:
      * Prepares the RGB LEDs for use.
      */
     static void begin(void) {
-        for (int i = 0; i < 2; i++) {
+        for (int i = 0; i < 4; i++) {
             rgb[i].Begin();
             rgb[i].Enable();
         }
@@ -196,8 +196,8 @@ public:
      */
     static void set(unsigned int n, unsigned long rgb24) {
         int index = 0;
-        if (n > 2) {
-            index = 1;
+        while (n > 2) {
+            index++;
             n -= 3;
         }
 
@@ -212,7 +212,7 @@ public:
      * @param rgb24 The 24-bit RGB value to write
      */
     static void setAll(unsigned long rgb24) {
-        for (unsigned int i = 0; i < 6; i++)
+        for (unsigned int i = 0; i < 12; i++)
             set(i, rgb24);
     }
 };
@@ -305,13 +305,14 @@ void setup() {
 }
 
 
-Lp55231 RgbLed::rgb[2] = {
-    Lp55231(0x32), Lp55231(0x33)
+Lp55231 RgbLed::rgb[4] = {
+    Lp55231(0x32), Lp55231(0x33),
+    Lp55231(0x34), Lp55231(0x35)
 };
 const char RgbLed::channel[9] = {
-    6, 0, 1, // R, G, B
-    7, 2, 3,
-    8, 4, 5,
+    6, 0, 1, // R1 G1 B1
+    7, 2, 3, // R2 G2 B2
+    8, 4, 5, // R3 G3 B3
 };
 
 SX1509 PgButtons::io;
