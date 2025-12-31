@@ -1,6 +1,6 @@
 menu.cpu=Processor
 
-plaalt.name=PLA ALT Controller
+plaalt.name=PLA FPS Controller
 
 plaalt.upload.tool=avrdude
 plaalt.upload.protocol=avr109
@@ -24,7 +24,7 @@ plaalt.build.core=arduino:arduino
 plaalt.build.variant=plaalt
 plaalt.build.mcu=atmega32u4
 plaalt.build.f_cpu=8000000L
-plaalt.build.usb_product="PLA ALT Controller"
+plaalt.build.usb_product="PLA FPS~XLR8R Controller"
 plaalt.build.usb_manufacturer="PLA LABS"
 plaalt.build.vid=0x1209
 plaalt.build.pid=0xA170

@@ -170,12 +170,13 @@ private:
  * @class RgbLed
  * @brief Handles and controls the RGB LEDs.
  */
+#define RGB_LED_COUNT (12)
 class RgbLed {
 private:
     // Object for controlling the RGB LED driver chips.
     static Lp55231 rgb[4];
 
-    // Defines the RGB channels for each LED connected to the LED chip.
+    // Mapping of RGB channels to their physical, on-chip channels.
     static const char channel[9];
 
 public:
@@ -212,7 +213,7 @@ public:
      * @param rgb24 The 24-bit RGB value to write
      */
     static void setAll(unsigned long rgb24) {
-        for (unsigned int i = 0; i < 12; i++)
+        for (unsigned int i = 0; i < RGB_LED_COUNT; i++)
             set(i, rgb24);
     }
 };
@@ -454,6 +455,26 @@ void handleSerial(void)
             b = Serial.read();
             color |= b & 0xFF;
             RgbLed::setAll(color);
+        }
+        break;
+    // Change individual color
+    case 'C':
+        {
+            unsigned int timeout = 500;
+            unsigned long color;
+            for (; Serial.available() < 4 && timeout > 0; --timeout)
+                delay(1);
+            if (timeout == 0)
+                break;
+            int index = Serial.read();
+            unsigned long b = Serial.read();
+            color = (b & 0xFF) << 16;
+            b = Serial.read();
+            color |= (b & 0xFF) << 8;
+            b = Serial.read();
+            color |= b & 0xFF;
+            if (index < RGB_LED_COUNT)
+                RgbLed::set(index, color);
         }
         break;
     // Synchronize PG

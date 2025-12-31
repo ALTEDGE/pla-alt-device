@@ -191,8 +191,8 @@ const USB_Descriptor_String_t LanguageString =
  */
 const USB_Descriptor_String_t ProductString =
 {
-	.Header                 = {.Size = USB_STRING_LEN(18), .Type = DTYPE_String},
-	.UnicodeString          = L"PLA ALT Controller"
+	.Header                 = {.Size = USB_STRING_LEN(24), .Type = DTYPE_String},
+	.UnicodeString          = L"PLA FPS~XLR8R Controller"
 };
 
 const USB_Descriptor_String_t ManufNameString = 
