@@ -18,6 +18,7 @@
 
 #include "Joystick.h"
 #include "lp55231.h"
+#include "lp5861.h"
 #include "SparkFunSX1509.h"
 #include "util/sx1509_registers.h"
 
@@ -170,11 +171,12 @@ private:
  * @class RgbLed
  * @brief Handles and controls the RGB LEDs.
  */
-#define RGB_LED_COUNT (12)
+#define RGB_LED_COUNT (6 + 12)
 class RgbLed {
 private:
     // Object for controlling the RGB LED driver chips.
-    static Lp55231 rgb[4];
+    static Lp55231 rgb[2];
+    static Lp5861 rgb2[2];
 
     // Mapping of RGB channels to their physical, on-chip channels.
     static const char channel[9];
@@ -184,10 +186,15 @@ public:
      * Prepares the RGB LEDs for use.
      */
     static void begin(void) {
-        for (int i = 0; i < 4; i++) {
-            rgb[i].Begin();
-            rgb[i].Enable();
-        }
+        rgb[0].Begin();
+        rgb[0].Enable();
+        rgb[1].Begin();
+        rgb[1].Enable();
+        delay(100);
+        rgb2[0].Begin();
+        rgb2[0].Enable();
+        rgb2[1].Begin();
+        rgb2[1].Enable();
     }
 
     /**
@@ -196,15 +203,25 @@ public:
      * @param rgb24 the 24-bit RGB value to write
      */
     static void set(unsigned int n, unsigned long rgb24) {
-        int index = 0;
-        while (n > 2) {
-            index++;
-            n -= 3;
-        }
+        if (n < 6) {
+          int index = 0;
+          while (n > 2) {
+              index++;
+              n -= 3;
+          }
 
-        for (int i = 0; i < 3; i++) {
-            rgb[index].SetChannelPWM(channel[n * 3 + i],
-                (rgb24 >> (8 * (2 - i))) & 0xFF);
+          for (int i = 0; i < 3; i++) {
+              rgb[index].SetChannelPWM(channel[n * 3 + i],
+                  (rgb24 >> (8 * (2 - i))) & 0xFF);
+          }
+        } else if (n < 12) {
+          rgb2[0].SetChannelPWM((n - 6) * 3 + 0, (rgb24 >> 16) & 0xFF);
+          rgb2[0].SetChannelPWM((n - 6) * 3 + 1, (rgb24 >>  8) & 0xFF);
+          rgb2[0].SetChannelPWM((n - 6) * 3 + 2, (rgb24 >>  0) & 0xFF);
+        } else if (n < 18) {
+          rgb2[1].SetChannelPWM((n - 12) * 3 + 0, (rgb24 >> 16) & 0xFF);
+          rgb2[1].SetChannelPWM((n - 12) * 3 + 1, (rgb24 >>  8) & 0xFF);
+          rgb2[1].SetChannelPWM((n - 12) * 3 + 2, (rgb24 >>  0) & 0xFF);
         }
     }
 
@@ -230,6 +247,7 @@ static int joyCalibrations[7] = {
  * Arduino setup and initialization.
  */
 static void enterTestMode();
+static void recalibrateJoysticks();
 void setup() {
     // Enable entering sleep mode
     SMCR = 1;
@@ -240,6 +258,8 @@ void setup() {
     pinMode(5, INPUT_PULLUP);
     pinMode(6, INPUT_PULLUP);
     pinMode(7, INPUT_PULLUP);
+    pinMode(11, OUTPUT);
+    digitalWrite(11, HIGH); // VSYNC, not used
 
     // Set analog ranges for the joysticks and potentiometer
 #ifndef DEBUG
@@ -262,27 +282,11 @@ void setup() {
                           EEPROM.read(1) == 'L' &&
                           EEPROM.read(2) == 'A';
         if (!validCalib || !digitalRead(5)) {
-            if (validCalib) {
+            //if (validCalib) {
                 RgbLed::setAll(0xFFFFFF);
-                delay(2500);
-            }
-
-            for (int i = 0; i < JOY_CALIB_COUNT; ++i) {
-                for (int j = 0; j < 7; ++j)
-                    joyCalibrations[j] += analogRead(j);
-                delay(1);
-            }
-
-            int addr = 4;
-            for (int i = 0; i < 7; ++i) {
-                joyCalibrations[i] = joyCalibrations[i] / JOY_CALIB_COUNT - 512;
-                EEPROM.put(addr, joyCalibrations[i]);
-                addr += sizeof(joyCalibrations[i]);
-            }
-
-            EEPROM.update(0, 'P');
-            EEPROM.update(1, 'L');
-            EEPROM.update(2, 'A');
+                delay(2000);
+            //}
+            recalibrateJoysticks();
         } else {
             int addr = 4;
             for (int i = 0; i < 7; ++i) {
@@ -306,10 +310,15 @@ void setup() {
 }
 
 
-Lp55231 RgbLed::rgb[4] = {
+Lp55231 RgbLed::rgb[2] = {
     Lp55231(0x32), Lp55231(0x33),
-    Lp55231(0x34), Lp55231(0x35)
+    //Lp55231(0x34), Lp55231(0x35)
 };
+
+Lp5861 RgbLed::rgb2[2] = {
+  Lp5861(0x00), Lp5861(0x01),
+};
+
 const char RgbLed::channel[9] = {
     6, 0, 1, // R1 G1 B1
     7, 2, 3, // R2 G2 B2
@@ -504,6 +513,9 @@ void handleSerial(void)
     case 'i':
         Serial.print("PLA");
         break;
+    case 'f':
+        recalibrateJoysticks();
+        break;
     default:
         break;
     }
@@ -535,3 +547,23 @@ void loop() {
 }
 
 #endif // DEBUG
+
+void recalibrateJoysticks()
+{
+  for (int i = 0; i < JOY_CALIB_COUNT; ++i) {
+    for (int j = 0; j < 7; ++j)
+      joyCalibrations[j] += analogRead(j);
+      delay(1);
+    }
+
+    int addr = 4;
+    for (int i = 0; i < 7; ++i) {
+      joyCalibrations[i] = joyCalibrations[i] / JOY_CALIB_COUNT - 512;
+      EEPROM.put(addr, joyCalibrations[i]);
+      addr += sizeof(joyCalibrations[i]);
+    }
+
+    EEPROM.update(0, 'P');
+    EEPROM.update(1, 'L');
+    EEPROM.update(2, 'A');
+}
